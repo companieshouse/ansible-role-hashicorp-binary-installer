@@ -1,0 +1,8 @@
+---
+
+supported_tools:
+  - vault
+  - consul
+
+release_url: https://releases.hashicorp.com
+
