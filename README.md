@@ -7,7 +7,7 @@ Requirements
 ------------
 
 - [GnuPG](https://gnupg.org/) installed on the host(s) that the role will run against
-  - HashiCorp's [public key](https://www.hashicorp.com/security) imported into the GnuPG keyring
+- HashiCorp's [public key](https://www.hashicorp.com/security) imported into the GnuPG keyring
 
 Role Variables
 --------------
