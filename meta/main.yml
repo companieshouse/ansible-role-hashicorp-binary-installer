@@ -1,0 +1,14 @@
+galaxy_info:
+  author: Companies House
+  description: Install HashiCorp tools from binary distribution packages
+  license: MIT
+
+  min_ansible_version: 2.7.9
+
+  platforms:
+    - name: centos
+      versions:
+        - 7
+
+dependencies: []
+

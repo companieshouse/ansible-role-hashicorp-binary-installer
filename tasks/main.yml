@@ -1,0 +1,8 @@
+---
+
+- include_tasks: install.yml
+  loop: "{{ hashicorp_tools|flatten(levels=1) }}"
+  loop_control:
+    loop_var: tool
+  when: hashicorp_tools is defined and hashicorp_tools|length > 0
+

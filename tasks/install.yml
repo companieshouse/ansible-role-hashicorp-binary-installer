@@ -1,0 +1,89 @@
+---
+
+- fail: 
+    msg: "The specified tool '{{ tool.name }}' is unsupported by this Ansible Galaxy role"
+  when: tool.name not in supported_tools
+
+- set_fact:
+    pretty_name: "{{ tool.name|capitalize }}"
+
+- name: Create temporary directory
+  tempfile:
+    state: directory
+    suffix: build
+  register: temp_dir
+
+- name: "Download {{ pretty_name }} binary zip, SHASUM, and SHASUM.sig files"
+  get_url:
+    url: "{{ item }}"
+    dest: "{{ temp_dir.path }}"
+    mode: 0600
+  with_items:
+    - "{{ release_url }}/{{ tool.name }}/{{ tool.version }}/{{ tool.name }}_{{ tool.version }}_linux_amd64.zip"
+    - "{{ release_url }}/{{ tool.name }}/{{ tool.version }}/{{ tool.name }}_{{ tool.version }}_SHA256SUMS"
+    - "{{ release_url }}/{{ tool.name }}/{{ tool.version }}/{{ tool.name }}_{{ tool.version }}_SHA256SUMS.sig"
+
+- name: Verify the signature file is untampered
+  command: "gpg --verify {{ temp_dir.path }}/{{ tool.name }}_{{ tool.version }}_SHA256SUMS.sig {{ temp_dir.path }}/{{ tool.name }}_{{ tool.version }}_SHA256SUMS"
+  register: signature_check
+
+- name: Assert that signature verification succeeded
+  assert:
+    that:
+      - signature_check.rc == 0
+    fail_msg: "Signature verification failed; file is untrustworthy!"
+    success_msg: "Signature verification succeeded"
+
+- name: "Read expected sha256 checksum for {{ pretty_name }} version binary"
+  shell: "cat {{ temp_dir.path }}/{{ tool.name }}_{{ tool.version }}_SHA256SUMS | grep {{ tool.name }}_{{ tool.version }}_linux_amd64.zip"
+  register: expected_checksum
+
+- name: "Assert that expected sha256 checksum for {{ pretty_name }} zip was read correctly"
+  assert:
+    that:
+      - expected_checksum.stdout_lines|length == 1
+    fail_msg: "Unable to read shasum value for {{ pretty_name }} version from shasum file"
+    success_msg: "Read shasum value for {{ pretty_name }} version"
+
+- name: "Generate actual sha256 checksum for {{ pretty_name }} zip"
+  command: "sha256sum {{ tool.name }}_{{ tool.version }}_linux_amd64.zip"
+  args:
+      chdir: "{{ temp_dir.path }}"
+  register: actual_checksum
+
+- name: "Verify actual sha256 checksum for {{ pretty_name }} zip matches expected checksum"
+  assert:
+    that:
+      - expected_checksum.stdout_lines[0] == actual_checksum.stdout_lines[0]
+    fail_msg: "Actual shasum256 checksum for zip file does not match expected checksum"
+    success_msg: "Actual shasum256 checksum for zip file matches expected checksum"
+
+- name: "Unpack {{ pretty_name }} zip"
+  unarchive:
+    remote_src: yes
+    src: "{{ temp_dir.path }}/{{ tool.name }}_{{ tool.version }}_linux_amd64.zip"
+    dest: /usr/local/bin
+
+- stat:
+    path: /usr/local/bin/{{ tool.name }}
+  register: binary
+
+- name: "Assert that {{ pretty_name }} binary was installed to expected path"
+  assert:
+    that:
+      - binary.stat.exists == True
+    fail_msg: "{{ pretty_name }} binary was not found at expected path"
+    success_msg: "{{ pretty_name }} binary installed correctly"
+
+- name: "Set permissions on {{ pretty_name }} binary"
+  file:
+    path: /usr/local/bin/{{ tool.name }}
+    owner: root
+    group: root
+    mode: 0755
+
+- name: Remove temporary directory
+  file:
+    path: temp_dir.path
+    state: absent
+
