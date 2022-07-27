@@ -1,4 +1,5 @@
 galaxy_info:
+  role_name: hashicorp-binary-installer
   author: Companies House
   description: Install HashiCorp tools from binary distribution packages
   license: MIT
